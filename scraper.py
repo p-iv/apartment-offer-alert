@@ -6,6 +6,9 @@ from bs4 import BeautifulSoup
 class Scraper:
     def __init__(self, base_url: str):
         self.base_url = base_url
+        self.row_html = self.get_page_html()
+        self.row_json = self.parse_row_html(self.row_html)
+        self.parsed_json = self.parse_row_json(self.row_json)
 
     def get_page_html(self) -> str:
         response = requests.get(self.base_url, impersonate="chrome")
@@ -18,42 +21,75 @@ class Scraper:
             return ""
 
     @staticmethod
-    def parse_offers(html_content: str):
+    def parse_row_html(html_content: str) -> dict:
         if not html_content:
             print("[ERROR] no data for parsing")
-            return
+            return {}
 
         soup = BeautifulSoup(html_content, "html.parser")
         script_tag = soup.find("script", {"type": "application/ld+json"})
 
         if not script_tag:
             print("[ERROR] no json found for parsing")
-            return
+            return {}
 
         try:
             data_json = json.loads(script_tag.string)
-            offers_list = data_json["@graph"][1]["offers"]["offers"]
+            graph = data_json.get("@graph", [])
+            row_json_dict = {}
 
-            for i, offer in enumerate(offers_list, start=1):
-                title = offer.get("name")
-                price = offer.get("price", 0)
-                url = offer.get("url", "")
+            for item in graph:
+                if "offers" in item and "offers" in item["offers"]:
+                    row_json_dict = item["offers"]["offers"]
+                    break
 
-                item_details = offer.get("itemOffered", {})
-                description = item_details.get("description", "")
-                num_rooms = item_details.get("numberOfRooms", 0)
+            if not row_json_dict:
+                print("[WARNING] Structure found, but offers array is empty.")
 
-                apartment_size = item_details.get("floorSize", {}).get("value", 0)
-                price_per_m2 = round(price / apartment_size, 2) if apartment_size > 0 else 0
-
-                print(f"Offer #{i}: {title}")
-                print(f"Description: {description}")
-                print(f"       Price: {price} PLN | Meters: {apartment_size} m² | Rooms: {num_rooms}")
-                print(f"       Price per m²: {price_per_m2} PLN")
-                print(f"       Url: {url}")
-                print("-" * 70)
+            return row_json_dict
 
         except (IndexError, KeyError, json.JSONDecodeError) as e:
+            print(f"[ERROR] while parsing json : {e}")
+            return {}
 
-            print(f"[Scraper] Błąd podczas przetwarzania struktury JSON: {e}")
+    @staticmethod
+    def parse_row_json(row_json: dict) -> list:
+        if not row_json:
+            print("[ERROR] no data for parsing")
+            return []
 
+        parsed_json_list = []
+
+        for item in row_json:
+            name = item.get("name")
+            price = item.get("price", 0)
+            price_currency = item.get("priceCurrency", "")
+            url = item.get("url", "")
+
+            item_details = item.get("itemOffered", {})
+            description = item_details.get("description", "")
+            num_rooms = item_details.get("numberOfRooms", 0)
+
+            apartment_size = item_details.get("floorSize", {}).get("value", 0)
+            price_per_m2 = round(price / apartment_size, 2) if apartment_size > 0 else 0
+
+            address_details = item_details.get("address", {})
+            city = address_details.get("addressLocality", "")
+            street = address_details.get("streetAddress", "")
+
+            parsed_json = {
+                "title": name,
+                "price": price,
+                "price_currency": price_currency,
+                "url": url,
+                "description": description,
+                "num_rooms": num_rooms,
+                "apartment_size": apartment_size,
+                "price_per_m2": price_per_m2,
+                "city": city,
+                "street": street,
+            }
+
+            parsed_json_list.append(parsed_json)
+
+        return parsed_json_list
