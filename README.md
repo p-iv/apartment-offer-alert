@@ -1,4 +1,4 @@
-# Apartment Offer Alert 🏢🔔
+# Apartment Offer Alert 
 
 An automated, real-time web scraping and data analysis system designed to monitor the real estate market (Otodom) for rental apartments. The application automatically detects new listings, calculates market price averages using an internal database, filters out price anomalies, and instantly sends automated alerts via a Telegram bot.
 
