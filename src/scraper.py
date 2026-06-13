@@ -6,9 +6,6 @@ from bs4 import BeautifulSoup
 class Scraper:
     def __init__(self, base_url: str):
         self.base_url = base_url
-        self.row_html = self.get_page_html()
-        self.row_json = self.parse_row_html(self.row_html)
-        self.parsed_json = self.parse_row_json(self.row_json)
 
     def get_page_html(self) -> str:
         response = requests.get(self.base_url, impersonate="chrome")
@@ -53,7 +50,7 @@ class Scraper:
             return {}
 
     @staticmethod
-    def parse_row_json(row_json: dict) -> list:
+    def parse_offers(row_json: dict) -> list:
         if not row_json:
             print("[ERROR] no data for parsing")
             return []
@@ -63,7 +60,7 @@ class Scraper:
         for item in row_json:
             name = item.get("name")
             price = item.get("price", 0)
-            price_currency = item.get("priceCurrency", "")
+            image = item.get("image", "")
             url = item.get("url", "")
 
             item_details = item.get("itemOffered", {})
@@ -79,8 +76,8 @@ class Scraper:
 
             parsed_json = {
                 "title": name,
+                "image": image,
                 "price": price,
-                "price_currency": price_currency,
                 "url": url,
                 "description": description,
                 "num_rooms": num_rooms,
