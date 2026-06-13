@@ -13,11 +13,6 @@ if __name__ == '__main__':
     row_json = scraper.parse_row_html(row_html)
     parsed_offers = scraper.parse_offers(row_json)
 
-    analyzer = Analyzer(parsed_offers, target_excel_path)
-
-    analyzer.clean_data()
-    analyzer.generate_excel()
-
     db = SQLliteDB("../database/otodom.db")
 
     for offer in parsed_offers:
@@ -25,5 +20,12 @@ if __name__ == '__main__':
             if db.is_valuable_offer(offer['price_per_m2']):
                 db.insert_new_offer(offer, "valuable_offers")
             db.insert_new_offer(offer, "apartments")
+
+    db.close_connection()
+
+    analyzer = Analyzer(parsed_offers, target_excel_path)
+
+    analyzer.clean_data()
+    analyzer.generate_excel()
 
 
